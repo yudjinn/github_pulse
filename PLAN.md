@@ -201,7 +201,7 @@ KV value marked stale (dim). If no value exists, it renders a `WARN` line.
   `xmllint --noout`.
 - ✅ `git status` shows no `config.toml` or `wrangler.toml`.
 
-**Phase 1: Renderer + static sources**
+**Phase 1: Renderer + static sources** ✔ done 2026-10-26
 - `Line` model, renderer, uptime + weather, cron handler, KV caching.
 - ✅ `insta` snapshot tests for the renderer; escaping test; CJK truncation test.
 - ✅ `pulse render --fixtures` output renders correctly in a browser and a gist preview.

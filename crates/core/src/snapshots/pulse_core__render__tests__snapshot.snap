@@ -1,0 +1,15 @@
+---
+source: crates/core/src/render.rs
+expression: "render(&lines, &opts())"
+---
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="188" viewBox="0 0 840 188" xml:space="preserve"><style>
+text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 13px; fill: #c9d1d9; white-space: pre; }
+.p { fill: #7ee787; }
+.ts { fill: #8b949e; }
+.fac { fill: #79c0ff; }
+.ok { fill: #7ee787; }
+.warn, .warn .fac { fill: #d29922; }
+.stale, .stale .ts, .stale .fac { fill: #6e7681; }
+.cur { animation: blink 1.1s steps(1) infinite; }
+@keyframes blink { 50% { fill-opacity: 0; } }
+</style><rect width="840" height="188" rx="8" fill="#0d1117"/><text x="16" y="29"><tspan class="p">$</tspan> dmesg -T --follow</text><text x="16" y="49"><tspan class="ts">[Mon Oct 26 17:00]</tspan> <tspan class="fac">uptime:</tspan> career up 8y 4m</text><text x="16" y="69"><tspan class="ts">[Mon Oct 26 16:45]</tspan> <tspan class="fac">hwmon:</tspan> helsinki 11.8°C, wind 9 m/s, daylight 9h 12m ↓</text><text x="16" y="89" class="warn"><tspan class="ts">[Mon Oct 26 16:59]</tspan> <tspan class="fac">github:</tspan> fetch failed: timeout</text><text x="16" y="109" class="ok"><tspan class="ts">[Mon Oct 26 16:58]</tspan> <tspan class="fac">spotify:</tspan> ▶ &quot;Rock &amp; Roll &lt;Live&gt;&quot; — Led Zeppelin</text><text x="16" y="129"><tspan class="ts">[Mon Oct 26 16:00]</tspan> <tspan class="fac">git:</tspan> push yudjinn/github_pulse</text><text x="16" y="149" class="stale"><tspan class="ts">[Mon Oct 26 15:00]</tspan> <tspan class="fac">git:</tspan> active 東京事変 active 東京事変 active 東京事変 active 東京事変 active 東京事…</text><text x="16" y="169">yudjinn login: <tspan class="cur">▌</tspan></text></svg>

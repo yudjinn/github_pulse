@@ -1,0 +1,35 @@
+{
+    "latitude": 60.16998,
+    "longitude": 24.945206,
+    "generationtime_ms": 0.037670135498046875,
+    "utc_offset_seconds": 7200,
+    "timezone": "Europe/Helsinki",
+    "timezone_abbreviation": "GMT+2",
+    "elevation": 7.0,
+    "current_units": {
+        "time": "iso8601",
+        "interval": "seconds",
+        "temperature_2m": "\u00b0C",
+        "wind_speed_10m": "m/s"
+    },
+    "current": {
+        "time": "2026-10-26T15:15",
+        "interval": 900,
+        "temperature_2m": 11.8,
+        "wind_speed_10m": 9.3
+    },
+    "daily_units": {
+        "time": "iso8601",
+        "daylight_duration": "s"
+    },
+    "daily": {
+        "time": [
+            "2026-10-26",
+            "2026-10-27"
+        ],
+        "daylight_duration": [
+            33146.77,
+            32831.09
+        ]
+    }
+}

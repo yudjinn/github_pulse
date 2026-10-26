@@ -7,7 +7,12 @@ use std::{
 
 use anyhow::{Context, Result, bail, ensure};
 use clap::{Parser, Subcommand};
-use pulse_core::{Config, config::KV_BINDING};
+use pulse_core::{
+    Config,
+    config::KV_BINDING,
+    render::{self, RenderOptions},
+    sources::{uptime, weather},
+};
 
 /// Pinned so builds don't shift under us; bump deliberately.
 const COMPATIBILITY_DATE: &str = "2026-10-01";
@@ -32,6 +37,8 @@ enum Cmd {
         #[arg(long)]
         push_secrets: bool,
     },
+    /// Print a preview SVG to stdout, built from the recorded fixtures.
+    Render,
 }
 
 fn main() -> Result<()> {
@@ -39,10 +46,15 @@ fn main() -> Result<()> {
     let config = load_config(&cli.config)?;
     match cli.command {
         Cmd::Sync { push_secrets } => sync(&config, &cli.config, push_secrets),
+        Cmd::Render => {
+            print!("{}", preview(&config)?);
+            Ok(())
+        }
     }
 }
 
 fn load_config(path: &Path) -> Result<Config> {
+    warn_if_world_readable(path);
     let text = fs::read_to_string(path).with_context(|| {
         format!(
             "reading {} (copy config.example.toml to get started)",
@@ -50,6 +62,39 @@ fn load_config(path: &Path) -> Result<Config> {
         )
     })?;
     Config::from_toml(&text).with_context(|| format!("parsing {}", path.display()))
+}
+
+/// config.toml holds secrets; nudge the owner if other users can read it.
+fn warn_if_world_readable(path: &Path) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if let Ok(meta) = fs::metadata(path)
+            && meta.permissions().mode() & 0o077 != 0
+        {
+            eprintln!(
+                "warning: {} is readable by other users; run `chmod 600 {0}`",
+                path.display()
+            );
+        }
+    }
+}
+
+fn preview(config: &Config) -> Result<String> {
+    const WEATHER: &str = include_str!("../../../tests/fixtures/open-meteo.json");
+    let now = chrono::Utc::now().timestamp();
+    let tz = render::parse_tz(&config.location.timezone);
+    let lines = vec![
+        uptime::line(&config.profile.career_start, now, tz),
+        weather::parse(WEATHER, &config.location.name, now)?,
+    ];
+    Ok(render::render(
+        &lines,
+        &RenderOptions {
+            tz,
+            login: &config.profile.github_user,
+        },
+    ))
 }
 
 fn sync(config: &Config, config_path: &Path, push_secrets: bool) -> Result<()> {
@@ -99,12 +144,14 @@ fn wrangler_toml(config: &Config) -> Result<String> {
     }
 
     let mut build = Table::new();
-    // Only compile the configured zone into chrono-tz to keep the wasm small.
+    // Only compile the configured zone (and UTC, the fallback) into chrono-tz to keep
+    // the wasm small. The filter is a regex; `+` is the only metacharacter allowed above.
+    let filter = format!("^(UTC|{})$", tz.replace('+', "\\+"));
     build.insert(
         "command".into(),
         format!(
             "cargo install -q worker-build@^0.8 && \
-             CHRONO_TZ_TIMEZONE_FILTER='{tz}' worker-build --release"
+             CHRONO_TZ_TIMEZONE_FILTER='{filter}' worker-build --release"
         )
         .into(),
     );
