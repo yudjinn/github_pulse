@@ -54,25 +54,29 @@ pub fn parse(events_json: &str, repos_json: &str, user: &str) -> Result<Vec<Line
     let mut lines: Vec<(String, Line)> = Vec::new();
     let mut repeats = 1;
     for event in &events {
-        let Some(msg) = event_msg(event, user) else {
+        let Some((before, after)) = event_msg(event) else {
             continue;
         };
+        let line = repo_line(
+            timestamp(&event.created_at)?,
+            &event.repo.name,
+            user,
+            (&before, &after),
+        );
         // The feed is newest first; fold runs of identical lines into one with a count.
+        // Appending the count keeps the link's byte range valid.
         if let Some((_, last)) = lines.last_mut()
-            && strip_count(&last.msg) == msg
+            && strip_count(&last.msg) == line.msg
         {
             repeats += 1;
-            last.msg = format!("{msg} ×{repeats}");
+            last.msg = format!("{} ×{repeats}", line.msg);
             continue;
         }
         if lines.len() == MAX_EVENTS {
             break;
         }
         repeats = 1;
-        lines.push((
-            event.repo.name.clone(),
-            Line::new(timestamp(&event.created_at)?, Level::Info, FACILITY, msg),
-        ));
+        lines.push((event.repo.name.clone(), line));
     }
 
     let active = repos
@@ -80,40 +84,60 @@ pub fn parse(events_json: &str, repos_json: &str, user: &str) -> Result<Vec<Line
         .filter(|r| !r.fork && !lines.iter().any(|(name, _)| *name == r.full_name))
         .take(MAX_REPOS)
         .map(|r| {
-            let mut msg = format!("active {}", display_repo(&r.full_name, user));
+            let mut after = String::new();
             if let Some(lang) = &r.language {
-                msg.push_str(&format!(" ({lang})"));
+                after.push_str(&format!(" ({lang})"));
             }
             if let Some(desc) = r.description.as_deref().filter(|d| !d.is_empty()) {
-                msg.push_str(&format!(" — {desc}"));
+                after.push_str(&format!(" — {desc}"));
             }
-            Ok(Line::new(timestamp(&r.pushed_at)?, Level::Info, FACILITY, msg))
+            Ok(repo_line(
+                timestamp(&r.pushed_at)?,
+                &r.full_name,
+                user,
+                ("active ", &after),
+            ))
         })
         .collect::<Result<Vec<_>, Error>>()?;
 
     Ok(lines.into_iter().map(|(_, l)| l).chain(active).collect())
 }
 
-fn event_msg(event: &Event, user: &str) -> Option<String> {
-    let repo = display_repo(&event.repo.name, user);
+/// `before <repo> after`, with the repo name linking to the repo on GitHub.
+fn repo_line(ts: i64, full_name: &str, user: &str, (before, after): (&str, &str)) -> Line {
+    Line::linked(
+        ts,
+        Level::Info,
+        FACILITY,
+        (before, display_repo(full_name, user), after),
+        format!("https://github.com/{full_name}"),
+    )
+}
+
+/// The text around the repo name for events worth showing.
+fn event_msg(event: &Event) -> Option<(String, String)> {
     let p = &event.payload;
-    match event.kind.as_str() {
-        "PushEvent" => Some(format!("push {repo}")),
+    let (before, after) = match event.kind.as_str() {
+        "PushEvent" => ("push ".into(), String::new()),
         "PullRequestEvent" => {
             let action = p["action"].as_str()?;
             if !matches!(action, "opened" | "closed" | "reopened") {
                 return None;
             }
-            Some(format!("PR {action} {repo}#{}", p["number"].as_u64()?))
+            (format!("PR {action} "), format!("#{}", p["number"].as_u64()?))
         }
-        "CreateEvent" if p["ref_type"] == "repository" => Some(format!("new repo {repo}")),
-        "ReleaseEvent" => Some(match p["release"]["tag_name"].as_str() {
-            Some(tag) => format!("release {repo} {tag}"),
-            None => format!("release {repo}"),
-        }),
-        "PublicEvent" => Some(format!("open-sourced {repo}")),
-        _ => None,
-    }
+        "CreateEvent" if p["ref_type"] == "repository" => ("new repo ".into(), String::new()),
+        "ReleaseEvent" => (
+            "release ".into(),
+            p["release"]["tag_name"]
+                .as_str()
+                .map(|tag| format!(" {tag}"))
+                .unwrap_or_default(),
+        ),
+        "PublicEvent" => ("open-sourced ".into(), String::new()),
+        _ => return None,
+    };
+    Some((before, after))
 }
 
 /// The owner's own repos without the `user/` prefix; everyone else's in full.
@@ -178,6 +202,20 @@ mod tests {
             ["push a ×3", "PR opened helix-editor/helix#42", "release a v1.0.0"]
         );
         assert_eq!(lines[0].ts, 1_793_016_000); // newest of the folded run
+    }
+
+    #[test]
+    fn repo_names_link_to_github() {
+        let lines = parse(EVENTS, REPOS, "yudjinn").unwrap();
+        let link = lines[0].link.as_ref().unwrap();
+        assert_eq!(&lines[0].msg[link.start..link.start + link.len], "timber");
+        assert_eq!(link.href, "https://github.com/yudjinn/timber");
+
+        let pr = r#"[{"type":"PullRequestEvent","repo":{"name":"helix-editor/helix"},"created_at":"2026-10-26T07:00:00Z","payload":{"action":"opened","number":42}}]"#;
+        let line = &parse(pr, "[]", "yudjinn").unwrap()[0];
+        let link = line.link.as_ref().unwrap();
+        assert_eq!(&line.msg[link.start..link.start + link.len], "helix-editor/helix");
+        assert_eq!(link.href, "https://github.com/helix-editor/helix");
     }
 
     #[test]

@@ -21,7 +21,9 @@ fn same_content(a: &[Line], b: &[Line]) -> bool {
     a.len() == b.len()
         && a.iter()
             .zip(b)
-            .all(|(x, y)| x.level == y.level && x.facility == y.facility && x.msg == y.msg)
+            .all(|(x, y)| {
+                x.level == y.level && x.facility == y.facility && x.msg == y.msg && x.link == y.link
+            })
 }
 
 /// Store `lines` under `key` if they changed or the stored copy is due for a refresh.

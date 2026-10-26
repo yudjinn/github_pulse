@@ -4,6 +4,7 @@
       "track": {
         "type": "track",
         "id": "fixture-track-id",
+        "external_urls": { "spotify": "https://open.spotify.com/track/fixture-track-id" },
         "name": "Kyoto",
         "duration_ms": 184000,
         "artists": [{ "type": "artist", "id": "fixture-artist-id", "name": "Phoebe Bridgers" }]

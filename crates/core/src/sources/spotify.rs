@@ -36,6 +36,15 @@ pub fn parse_token(json: &str) -> Result<Token, Error> {
 struct Track {
     name: String,
     artists: Vec<Artist>,
+    /// Absent for local files.
+    id: Option<String>,
+    #[serde(default)]
+    external_urls: ExternalUrls,
+}
+
+#[derive(Default, Deserialize)]
+struct ExternalUrls {
+    spotify: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -44,9 +53,22 @@ struct Artist {
 }
 
 impl Track {
-    fn describe(&self) -> String {
+    /// `<prefix>"<name>" — <artists>`, with the quoted name linking to the track.
+    fn line(&self, ts: i64, level: Level, prefix: &str) -> Line {
         let artists: Vec<_> = self.artists.iter().map(|a| a.name.as_str()).collect();
-        format!("\"{}\" — {}", self.name, artists.join(", "))
+        let href = self
+            .external_urls
+            .spotify
+            .clone()
+            .or_else(|| self.id.as_ref().map(|id| format!("https://open.spotify.com/track/{id}")))
+            .unwrap_or_default();
+        Line::linked(
+            ts,
+            level,
+            FACILITY,
+            (prefix, &format!("\"{}\"", self.name), &format!(" — {}", artists.join(", "))),
+            href,
+        )
     }
 }
 
@@ -66,12 +88,9 @@ pub fn parse_currently_playing(json: &str, now: i64) -> Result<Option<Line>, Err
     }
     let cp: CurrentlyPlaying = serde_json::from_str(json)?;
     Ok(match cp.item {
-        Some(track) if cp.is_playing && cp.currently_playing_type == "track" => Some(Line::new(
-            now,
-            Level::Ok,
-            FACILITY,
-            format!("▶ {}", track.describe()),
-        )),
+        Some(track) if cp.is_playing && cp.currently_playing_type == "track" => {
+            Some(track.line(now, Level::Ok, "▶ "))
+        }
         _ => None,
     })
 }
@@ -95,12 +114,7 @@ pub fn parse_recently_played(json: &str) -> Result<Option<Line>, Error> {
     let ts = DateTime::parse_from_rfc3339(&play.played_at)
         .map_err(|e| Error(format!("bad played_at: {e}")))?
         .timestamp();
-    Ok(Some(Line::new(
-        ts,
-        Level::Info,
-        FACILITY,
-        format!("last played {}", play.track.describe()),
-    )))
+    Ok(Some(play.track.line(ts, Level::Info, "last played ")))
 }
 
 // Fixtures are shaped after the Spotify Web API reference, trimmed to the fields
@@ -120,6 +134,21 @@ mod tests {
         assert_eq!(line.msg, "▶ \"Rock & Roll - Remaster\" — Led Zeppelin");
         assert_eq!(line.level, Level::Ok);
         assert_eq!(line.ts, 100);
+        let link = line.link.unwrap();
+        assert_eq!(&line.msg[link.start..link.start + link.len], "\"Rock & Roll - Remaster\"");
+        assert_eq!(link.href, "https://open.spotify.com/track/fixture-track-id");
+    }
+
+    #[test]
+    fn local_files_have_no_link() {
+        let local = PLAYING
+            .replace("\"id\": \"fixture-track-id\",", "\"id\": null,")
+            .replace(
+                "\"external_urls\": { \"spotify\": \"https://open.spotify.com/track/fixture-track-id\" },",
+                "\"external_urls\": {},",
+            );
+        let line = parse_currently_playing(&local, 0).unwrap().unwrap();
+        assert!(line.link.is_none());
     }
 
     #[test]

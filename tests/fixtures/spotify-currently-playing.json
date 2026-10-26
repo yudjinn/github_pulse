@@ -6,6 +6,7 @@
   "item": {
     "type": "track",
     "id": "fixture-track-id",
+    "external_urls": { "spotify": "https://open.spotify.com/track/fixture-track-id" },
     "name": "Rock & Roll - Remaster",
     "duration_ms": 220000,
     "album": { "name": "Led Zeppelin IV (Remaster)", "album_type": "album" },

@@ -6,7 +6,7 @@ use chrono::{DateTime, TimeZone};
 use chrono_tz::Tz;
 use unicode_width::UnicodeWidthChar;
 
-use crate::line::{Level, Line};
+use crate::line::{Level, Line, Link};
 
 const WIDTH: u32 = 840;
 const PAD_X: u32 = 16;
@@ -25,6 +25,8 @@ text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation M
 .ok { fill: #7ee787; }
 .warn, .warn .fac { fill: #d29922; }
 .stale, .stale .ts, .stale .fac { fill: #6e7681; }
+a .lnk { text-decoration: underline; }
+a:hover .lnk { fill: #79c0ff; }
 .cur { animation: blink 1.1s steps(1) infinite; }
 @keyframes blink { 50% { fill-opacity: 0; } }
 "#;
@@ -76,7 +78,7 @@ pub fn render(lines: &[Line], opts: &RenderOptions) -> String {
             r#"<tspan class="ts">{}</tspan> <tspan class="fac">{}:</tspan> {}"#,
             escape(&ts),
             escape(&line.facility),
-            escape(&msg),
+            msg_markup(&msg, line.link.as_ref()),
         );
         text(&mut svg, class, &body);
     }
@@ -89,6 +91,26 @@ pub fn render(lines: &[Line], opts: &RenderOptions) -> String {
 
     svg.push_str("</svg>\n");
     svg
+}
+
+/// Escaped `msg` with the linked span wrapped in `<a>`. `msg` may have been truncated,
+/// so the link is clipped to what's left (ignoring the trailing `…`).
+fn msg_markup(msg: &str, link: Option<&Link>) -> String {
+    let kept = msg.strip_suffix('…').unwrap_or(msg).len();
+    let Some(link) = link else {
+        return escape(msg);
+    };
+    let end = (link.start + link.len).min(kept);
+    match (msg.get(..link.start), msg.get(link.start..end), msg.get(end..)) {
+        (Some(before), Some(text), Some(after)) if !text.is_empty() => format!(
+            r#"{}<a href="{}"><tspan class="lnk">{}</tspan></a>{}"#,
+            escape(before),
+            escape(&link.href),
+            escape(text),
+            escape(after),
+        ),
+        _ => escape(msg),
+    }
 }
 
 /// Boot lines first in their given order, then the rest newest first.
@@ -185,6 +207,34 @@ mod tests {
     }
 
     #[test]
+    fn links_wrap_their_span_and_survive_truncation() {
+        let line = Line::linked(
+            NOW,
+            Level::Info,
+            "git",
+            ("push ", "a&b", " ×2"),
+            "https://github.com/x/a&b",
+        );
+        assert_eq!(
+            msg_markup(&line.msg, line.link.as_ref()),
+            r#"push <a href="https://github.com/x/a&amp;b"><tspan class="lnk">a&amp;b</tspan></a> ×2"#
+        );
+        // Cut inside the link: the remaining part stays linked, the ellipsis doesn't.
+        assert_eq!(
+            msg_markup("push a…", line.link.as_ref()),
+            r#"push <a href="https://github.com/x/a&amp;b"><tspan class="lnk">a</tspan></a>…"#
+        );
+        // Cut before the link: no link at all.
+        assert_eq!(msg_markup("pu…", line.link.as_ref()), "pu…");
+    }
+
+    #[test]
+    fn only_https_links_are_kept() {
+        let line = Line::linked(NOW, Level::Info, "git", ("", "x", ""), "javascript:alert(1)");
+        assert!(line.link.is_none());
+    }
+
+    #[test]
     fn boot_lines_pinned_then_newest_first() {
         let lines = [
             Line::new(NOW - 600, Level::Info, "git", "older"),
@@ -206,8 +256,8 @@ mod tests {
         let lines = [
             Line::new(NOW, Level::Info, "uptime", "career up 8y 4m").boot(),
             Line::new(NOW - 900, Level::Info, "hwmon", "helsinki 11.8°C, wind 9 m/s, daylight 9h 12m ↓").boot(),
-            Line::new(NOW - 120, Level::Ok, "spotify", "▶ \"Rock & Roll <Live>\" — Led Zeppelin"),
-            Line::new(NOW - 3600, Level::Info, "git", "push yudjinn/github_pulse"),
+            Line::linked(NOW - 120, Level::Ok, "spotify", ("▶ ", "\"Rock & Roll <Live>\"", " — Led Zeppelin"), "https://open.spotify.com/track/x"),
+            Line::linked(NOW - 3600, Level::Info, "git", ("push ", "github_pulse", ""), "https://github.com/yudjinn/github_pulse"),
             Line::new(NOW - 7200, Level::Stale, "git", "active yudjinn/timber (Rust) — ".repeat(5)),
             Line::warn(NOW - 60, "github", "fetch failed: timeout"),
         ];
