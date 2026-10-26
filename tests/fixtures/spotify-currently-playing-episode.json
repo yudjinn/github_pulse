@@ -1,0 +1,8 @@
+{
+  "timestamp": 1793026800000,
+  "progress_ms": 1000,
+  "is_playing": true,
+  "currently_playing_type": "episode",
+  "item": null,
+  "actions": { "disallows": { "resuming": true } }
+}

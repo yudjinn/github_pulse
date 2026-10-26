@@ -208,7 +208,7 @@ mod tests {
             Line::new(NOW - 900, Level::Info, "hwmon", "helsinki 11.8°C, wind 9 m/s, daylight 9h 12m ↓").boot(),
             Line::new(NOW - 120, Level::Ok, "spotify", "▶ \"Rock & Roll <Live>\" — Led Zeppelin"),
             Line::new(NOW - 3600, Level::Info, "git", "push yudjinn/github_pulse"),
-            Line::new(NOW - 7200, Level::Stale, "git", "active 東京事変 ".repeat(12)),
+            Line::new(NOW - 7200, Level::Stale, "git", "active yudjinn/timber (Rust) — ".repeat(5)),
             Line::warn(NOW - 60, "github", "fetch failed: timeout"),
         ];
         insta::assert_snapshot!(render(&lines, &opts()));

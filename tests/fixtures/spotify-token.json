@@ -1,0 +1,7 @@
+{
+  "access_token": "fixture-access-token",
+  "token_type": "Bearer",
+  "scope": "user-read-currently-playing user-read-recently-played",
+  "expires_in": 3600,
+  "refresh_token": "new-refresh-token"
+}

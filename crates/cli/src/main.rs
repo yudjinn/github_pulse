@@ -1,3 +1,5 @@
+mod auth;
+
 use std::{
     fs,
     io::Write,
@@ -39,6 +41,17 @@ enum Cmd {
     },
     /// Print a preview SVG to stdout, built from the recorded fixtures.
     Render,
+    /// One-time authorization with a provider; saves the result to the config.
+    Auth {
+        #[command(subcommand)]
+        provider: Provider,
+    },
+}
+
+#[derive(Subcommand)]
+enum Provider {
+    /// Authorize Spotify and store the refresh token in [secrets].
+    Spotify,
 }
 
 fn main() -> Result<()> {
@@ -46,6 +59,9 @@ fn main() -> Result<()> {
     let config = load_config(&cli.config)?;
     match cli.command {
         Cmd::Sync { push_secrets } => sync(&config, &cli.config, push_secrets),
+        Cmd::Auth {
+            provider: Provider::Spotify,
+        } => auth::spotify(&config, &cli.config),
         Cmd::Render => {
             print!("{}", preview(&config)?);
             Ok(())

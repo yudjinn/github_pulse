@@ -1,0 +1,15 @@
+{
+  "timestamp": 1793026800000,
+  "progress_ms": 61234,
+  "is_playing": true,
+  "currently_playing_type": "track",
+  "item": {
+    "type": "track",
+    "id": "fixture-track-id",
+    "name": "Rock & Roll - Remaster",
+    "duration_ms": 220000,
+    "album": { "name": "Led Zeppelin IV (Remaster)", "album_type": "album" },
+    "artists": [{ "type": "artist", "id": "fixture-artist-id", "name": "Led Zeppelin" }]
+  },
+  "actions": { "disallows": { "resuming": true } }
+}

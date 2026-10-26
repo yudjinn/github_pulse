@@ -130,8 +130,9 @@ github_token = ""
 ## 5. Sources
 
 Each source returns `Vec<Line>`. Each runs with its own timeout (**2 s**) and all run
-concurrently (`futures::join!`). If a source fails, the Worker falls back to the last good
-KV value marked stale (dim). If no value exists, it renders a `WARN` line.
+concurrently (`futures::join!`). If a cron source fails, the Worker keeps the last good
+KV value, which renders dimmed once 90 min old. If no value exists, it renders a `WARN`
+line. Spotify has no stored fallback: a failure renders `spotify: unavailable: <reason>`.
 
 ### 5.1 Spotify (live)
 - Token: `POST https://accounts.spotify.com/api/token`, Basic auth `id:secret`,
@@ -144,21 +145,25 @@ KV value marked stale (dim). If no value exists, it renders a `WARN` line.
     → `spotify: last played "<track>" — <artists>` with the `played_at` timestamp.
   - Ignore `currently_playing_type != "track"` (podcasts/ads): fall through to recently-played.
 - Scopes: `user-read-currently-playing user-read-recently-played`.
-- Redirect URI `http://127.0.0.1:8888/callback` (Spotify rejects `localhost`). **Verify
-  current Spotify developer dashboard requirements for development-mode apps.**
+- Redirect URI `http://127.0.0.1:8888/callback`. Verified 2026-10-26: Spotify rejects
+  `localhost` and allows plain HTTP only for loopback IP literals.
 
 ### 5.2 GitHub activity + recent projects (cron)
 - `GET https://api.github.com/users/<github_user>/events/public?per_page=30`, with a
   `User-Agent` header (required) and `Authorization: Bearer $GITHUB_TOKEN`
   (fine-grained, public read only).
 - Map to lines:
-  - `PushEvent` → `git: push <repo>` (**do not rely on `payload.commits`/`size`**:
-    GitHub has trimmed PushEvent payloads; verify against a live response)
-  - `PullRequestEvent` → `git: PR <action> <repo>#<n> "<title>"`
+  - `PushEvent` → `git: push <repo>` (verified 2026-10-26: payload has only `ref`,
+    `head`, `before`, ids; no commits or size)
+  - `PullRequestEvent` (`opened`/`closed`/`reopened` only) → `git: PR <action> <repo>#<n>`
+    (verified: payload no longer includes the PR title)
   - `CreateEvent` (repository) → `git: new repo <repo>`
   - `ReleaseEvent` → `git: release <repo> <tag>`
-  - `IssueCommentEvent`, `WatchEvent` → skip
-- Collapse consecutive events for the same repo into one line. Keep the newest **5**.
+  - `PublicEvent` → `git: open-sourced <repo>`
+  - everything else → skip
+- The owner's repos display without the `user/` prefix.
+- Fold runs of identical consecutive lines into one with a count (`push timber ×3`).
+  Keep the newest **5**.
 - Recent projects: `GET /users/<github_user>/repos?sort=pushed&per_page=10`, skip forks,
   take 3, render as `git: active <repo> (<language>) — <description>`. Dedupe against
   the event lines.
@@ -206,7 +211,7 @@ KV value marked stale (dim). If no value exists, it renders a `WARN` line.
 - ✅ `insta` snapshot tests for the renderer; escaping test; CJK truncation test.
 - ✅ `pulse render --fixtures` output renders correctly in a browser and a gist preview.
 
-**Phase 2: GitHub + Spotify**
+**Phase 2: GitHub + Spotify** ✔ code done 2026-10-26 (live Spotify check pending the owner's auth)
 - GitHub via cron; Spotify live with token refresh and rotation; `pulse auth spotify`.
 - ✅ Parser tests against recorded fixtures (scrub any tokens).
 - ✅ With Spotify secrets unset or invalid, `/dmesg.svg` still returns 200 with a `WARN` line.

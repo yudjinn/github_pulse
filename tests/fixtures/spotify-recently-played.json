@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "track": {
+        "type": "track",
+        "id": "fixture-track-id",
+        "name": "Kyoto",
+        "duration_ms": 184000,
+        "artists": [{ "type": "artist", "id": "fixture-artist-id", "name": "Phoebe Bridgers" }]
+      },
+      "played_at": "2026-10-26T13:00:00.000Z",
+      "context": null
+    }
+  ],
+  "limit": 1,
+  "href": "https://api.spotify.com/v1/me/player/recently-played?limit=1"
+}

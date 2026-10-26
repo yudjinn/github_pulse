@@ -1,6 +1,8 @@
 //! Pure parsers from API responses (or config) to [`Line`](crate::Line)s.
 //! HTTP, caching and timeouts live in the Worker.
 
+pub mod github;
+pub mod spotify;
 pub mod uptime;
 pub mod weather;
 
