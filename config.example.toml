@@ -1,0 +1,26 @@
+# Copy to config.toml (gitignored) and fill in. Then run `pulse sync`.
+
+[worker]
+name = "github-pulse"
+# Custom domain for the Worker. Its zone must be on your Cloudflare account.
+# Leave unset to use *.workers.dev.
+# domain = "pulse.example.com"
+# KV namespace id, from `npx wrangler kv namespace create PULSE`.
+# kv_namespace_id = ""
+
+[profile]
+github_user = "yudjinn"
+career_start = "2018-06"
+
+[location]
+name = "helsinki"
+latitude = 60.17
+longitude = 24.94
+timezone = "Europe/Helsinki"
+
+# Pushed with `pulse sync --push-secrets`. Never written to wrangler.toml.
+[secrets]
+spotify_client_id = ""
+spotify_client_secret = ""
+spotify_refresh_token = ""  # filled in by `pulse auth spotify`
+github_token = ""           # fine-grained, public repositories read-only

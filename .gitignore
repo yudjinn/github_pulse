@@ -1,0 +1,7 @@
+/target
+config.toml
+wrangler.toml
+.dev.vars
+build/
+node_modules/
+.wrangler/
