@@ -115,7 +115,11 @@ fn preview(config: &Config) -> Result<String> {
 
 fn sync(config: &Config, config_path: &Path, push_secrets: bool) -> Result<()> {
     // Generated files go next to the config so `--config` works from any directory.
-    let root = config_path.parent().unwrap_or(Path::new("."));
+    // `Path::new("config.toml").parent()` is `Some("")`, which isn't a usable cwd.
+    let root = config_path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
 
     let wrangler = root.join("wrangler.toml");
     fs::write(&wrangler, wrangler_toml(config)?)

@@ -48,6 +48,7 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         return Response::error("method not allowed", 405);
     }
     match req.path().as_str() {
+        "/" => index(&req),
         "/dmesg.svg" => svg_response(&dmesg_svg(&env).await),
         "/health" => Response::ok("ok"),
         _ => Response::error("not found", 404),
@@ -164,6 +165,30 @@ async fn load_or_warn(
             warn("cache unavailable")
         }
     }
+}
+
+/// Plain-text description of the endpoints.
+fn index(req: &Request) -> Result<Response> {
+    let host = req
+        .url()?
+        .host_str()
+        .map(str::to_owned)
+        .unwrap_or_else(|| "<host>".into());
+    let body = format!(
+        "github_pulse: a live, dmesg-style SVG card\n\
+         \n\
+         GET /dmesg.svg  image/svg+xml  The card: career uptime, local weather and daylight,\n\
+         \x20                              recent GitHub activity, Spotify now playing or last\n\
+         \x20                              played. Always 200; a failing source shows as a WARN line.\n\
+         GET /health     text/plain     \"ok\" if the Worker is running.\n\
+         GET /           text/plain     This page.\n\
+         \n\
+         Embed:\n\
+         \x20 <img src=\"https://{host}/dmesg.svg\" alt=\"Live dmesg feed\" width=\"100%\" />\n"
+    );
+    let headers = Headers::new();
+    headers.set("Content-Type", "text/plain; charset=utf-8")?;
+    Ok(Response::ok(body)?.with_headers(headers))
 }
 
 fn svg_response(svg: &str) -> Result<Response> {

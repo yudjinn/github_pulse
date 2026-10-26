@@ -217,7 +217,7 @@ line. Spotify has no stored fallback: a failure renders `spotify: unavailable: <
 - ✅ With Spotify secrets unset or invalid, `/dmesg.svg` still returns 200 with a `WARN` line.
 - ✅ KV writes/day estimate documented in README and under 500.
 
-**Phase 3: Deploy** (needs the owner's go-ahead)
+**Phase 3: Deploy** ✔ deployed 2026-10-26 to pulse.yudjinn.dev (live "now playing" check pending). Also added `GET /`, which describes the endpoints.
 - `pulse deploy` to the custom domain.
 - ✅ The song changes on the live card within ~2 min of a track change.
 

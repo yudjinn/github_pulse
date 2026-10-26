@@ -12,6 +12,14 @@ a GitHub profile README:
 `/dmesg.svg` always returns 200. If a source fails, its line becomes a yellow WARN line,
 or its last good value is shown dimmed.
 
+## Endpoints
+
+| Route | Returns |
+|---|---|
+| `GET /dmesg.svg` | `image/svg+xml`: the card. Always 200. |
+| `GET /health` | `text/plain`: `ok`. |
+| `GET /` | `text/plain`: a description of these endpoints and an embed snippet. |
+
 ## Layout
 
 | Crate | What it is |
